@@ -8,6 +8,7 @@ defmodule Aoc2016Test.Day02Test do
   end
 
   test "Day02 Test2" do
-    # assert Aoc2016.Day02.solution2("R8, R4, R4, R8") == 4
+    assert Aoc2016.Day02.solution2("ULL") == "5"
+    assert Aoc2016.Day02.solution2("ULL\nRRDDD\nLURDL\nUUUUD") == "5DB3"
   end
 end
