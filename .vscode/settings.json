@@ -1,3 +1,4 @@
 {
-    "elixirLS.projectDir": "Elixir"
+    "elixirLS.projectDir": "Elixir",
+    "editor.formatOnSave": true
 }
