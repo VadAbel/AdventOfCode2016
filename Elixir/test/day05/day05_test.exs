@@ -3,10 +3,10 @@ defmodule Aoc2016Test.Day05Test do
   doctest Aoc2016.Day05
 
   test "Day05 Test1" do
-     assert Aoc2016.Day05.solution1("abc") == "18f47a30"
+    assert Aoc2016.Day05.solution1("abc") == "18f47a30"
   end
 
   test "Day05 Test2" do
-    # assert Aoc2016.Day05.solution2() == ?
+    assert Aoc2016.Day05.solution2("abc") == "05ace8e3"
   end
 end
