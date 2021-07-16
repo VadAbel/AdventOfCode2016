@@ -5,16 +5,13 @@ defmodule Aoc2016.Day11 do
   defmodule SaveTowers do
     use Agent
 
-    def start_link do
-      Agent.start_link(fn -> MapSet.new() end, name: __MODULE__)
+    def start_link(initial_value) do
+      {:ok, pid} = Agent.start_link(fn -> MapSet.new(initial_value) end)
+      pid
     end
 
-    def add(tower) do
-      Agent.update(__MODULE__, &MapSet.put(&1, compact(tower)))
-    end
-
-    def member_and_add?(tower) do
-      Agent.get_and_update(__MODULE__, fn state ->
+    def member_and_add?(tower, pid) do
+      Agent.get_and_update(pid, fn state ->
         compact_tower = compact(tower)
         {MapSet.member?(state, compact_tower), MapSet.put(state, compact_tower)}
       end)
@@ -60,7 +57,7 @@ defmodule Aoc2016.Day11 do
     end)
   end
 
-  def process(towers, turn \\ 1) do
+  def process(towers, pid, turn \\ 1) do
     new_towers =
       for {elevator, floors} <- towers,
           next_elevator <- elevator_available_move(elevator, floors),
@@ -71,13 +68,13 @@ defmodule Aoc2016.Day11 do
             |> Map.update!(elevator, &MapSet.difference(&1, MapSet.new(items)))
             |> Map.update!(next_elevator, &MapSet.union(&1, MapSet.new(items))),
           valid_floors?(new_floors),
-          not SaveTowers.member_and_add?({next_elevator, new_floors}) do
+          not SaveTowers.member_and_add?({next_elevator, new_floors}, pid) do
         {next_elevator, new_floors}
       end
 
     if Enum.any?(new_towers, &finish?/1),
       do: turn,
-      else: process(new_towers, turn + 1)
+      else: process(new_towers, pid, turn + 1)
   end
 
   def finish?({_elevator, floors}), do: Enum.all?(1..3, &(floors[&1] |> MapSet.size() == 0))
@@ -108,18 +105,13 @@ defmodule Aoc2016.Day11 do
   end
 
   def solution1(input) do
-    {:ok, _pid} = SaveTowers.start_link()
-
     input
     |> String.split("\n", trim: true)
     |> parse()
-    |> tap(&SaveTowers.add/1)
-    |> then(&process([&1]))
+    |> then(&process([&1], SaveTowers.start_link([&1])))
   end
 
   def solution2(input) do
-    {:ok, _pid} = SaveTowers.start_link()
-
     input
     |> String.split("\n", trim: true)
     |> parse()
@@ -139,8 +131,7 @@ defmodule Aoc2016.Day11 do
          )
        )}
     end)
-    |> tap(&SaveTowers.add/1)
-    |> then(&process([&1]))
+    |> then(&process([&1], SaveTowers.start_link([&1])))
   end
 
   @doc """
