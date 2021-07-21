@@ -1,47 +1,67 @@
 defmodule Aoc2016.Day16 do
   require Integer
+  use Bitwise, only_operators: true
 
   @day "16"
   @input_file "../inputs/day#{@day}.txt"
 
   def dragon_curve(a, length) do
-    if String.length(a) < length do
-      dragon_curve(a <> "0" <> (a |> inverse()), length)
-    else
-      String.slice(a, 0, length)
+    inv_a =
+      Enum.reduce(a, [], fn
+        ?0, acc -> [?1 | acc]
+        ?1, acc -> [?0 | acc]
+      end)
+
+    [
+      Stream.cycle([a, inv_a]),
+      Stream.iterate(1, &(&1 + 1))
+      |> Stream.map(&calc_jointer/1)
+    ]
+    |> Stream.zip()
+    |> Stream.flat_map(fn {x, jointer} -> x ++ [jointer] end)
+    |> Stream.take(length)
+  end
+
+  defp calc_jointer(x) when x > 0 do
+    cond do
+      (x &&& 1) == 0 -> calc_jointer(x >>> 1)
+      (x &&& 2) == 0 -> ?0
+      (x &&& 2) == 2 -> ?1
     end
   end
 
-  def inverse(<<>>), do: <<>>
-  def inverse(<<?0, rest::binary>>), do: inverse(rest) <> <<?1>>
-  def inverse(<<?1, rest::binary>>), do: inverse(rest) <> <<?0>>
-
-  # This checksum is faster take less memory but need to reverse if this one is exec odd time
-  def checksum_s(<<>>), do: <<>>
-  def checksum_s(<<a::8, b::8, rest::binary>>) when a != b, do: checksum_s(rest) <> <<?0>>
-  def checksum_s(<<a::8, b::8, rest::binary>>) when a == b, do: checksum_s(rest) <> <<?1>>
-
-  def checksum(a, time \\ 0) do
-    if(Integer.is_even(String.length(a))) do
-      checksum_s(a)
-      |> checksum(time + 1)
-    else
-      if Integer.is_odd(time),
-        do: String.reverse(a),
-        else: a
-    end
+  def checksum(dragon, length) do
+    Stream.iterate({length, dragon}, fn {l, d} ->
+      {div(l, 2),
+       d
+       |> Stream.chunk_every(2)
+       |> Stream.map(fn
+         [x, x] -> ?1
+         _ -> ?0
+       end)}
+    end)
+    |> Stream.drop_while(fn {l, _} -> Integer.is_even(l) end)
+    |> Enum.take(1)
+    |> hd()
+    |> elem(1)
   end
 
   def solution1(input, length \\ 272) do
     input
+    |> String.to_charlist()
     |> dragon_curve(length)
-    |> checksum()
+    |> checksum(length)
+    |> Enum.to_list()
+    |> List.to_string()
   end
 
   def solution2(input, length \\ 35_651_584) do
     input
+    |> String.to_charlist()
     |> dragon_curve(length)
-    |> checksum()
+    |> checksum(length)
+    |> Enum.to_list()
+    |> List.to_string()
   end
 
   @doc """
