@@ -4,9 +4,16 @@ defmodule Aoc2016.Day05 do
 
   def md5_generator(doorID) do
     Stream.iterate(1, &(&1 + 1))
-    |> Stream.map(&:crypto.hash(:md5, doorID <> Integer.to_string(&1)))
-    |> Stream.filter(fn <<a::20, _::4, _::binary>> -> a == 0 end)
-    |> Stream.map(fn <<_a::20, b::4, c::4, _::4, _::binary>> -> {b, c} end)
+    |> Stream.chunk_every(2500)
+    |> Task.async_stream(
+      fn x ->
+        Stream.map(x, &:crypto.hash(:md5, doorID <> Integer.to_string(&1)))
+        |> Stream.filter(fn <<a::20, _::4, _::binary>> -> a == 0 end)
+        |> Enum.map(fn <<_a::20, b::4, c::4, _::4, _::binary>> -> {b, c} end)
+      end,
+      max_concurrency: System.schedulers_online() * 2
+    )
+    |> Stream.flat_map(fn {:ok, x} -> x end)
   end
 
   def solution1(input) do
