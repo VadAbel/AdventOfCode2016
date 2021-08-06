@@ -2,21 +2,6 @@ defmodule Aoc2016.Day22 do
   @day "22"
   @input_file "../inputs/day#{@day}.txt"
 
-  defmodule SavedState do
-    use Agent
-
-    def start_link(initial_value) do
-      {:ok, pid} = Agent.start_link(fn -> MapSet.new(initial_value) end)
-      pid
-    end
-
-    def member_and_add?(node_state, pid) do
-      Agent.get_and_update(pid, fn state ->
-        {MapSet.member?(state, node_state), MapSet.put(state, node_state)}
-      end)
-    end
-  end
-
   def parse(input) do
     input
     |> Enum.drop(2)
@@ -70,14 +55,22 @@ defmodule Aoc2016.Day22 do
     new_state_list =
       for {empty_node, data_node} <- state_list,
           new_empty <- neighbor(empty_node),
-          new_empty in node_list,
+          MapSet.member?(node_list, new_empty),
           new_data = if(new_empty == data_node, do: empty_node, else: data_node),
-          not SavedState.member_and_add?({new_empty, new_data}, saved_state),
-          do: {new_empty, new_data}
+          not MapSet.member?(saved_state, {new_empty, new_data}),
+          reduce: MapSet.new() do
+        acc -> MapSet.put(acc, {new_empty, new_data})
+      end
 
     if Enum.any?(new_state_list, &(elem(&1, 1) == {0, 0})),
       do: turn,
-      else: process_part2(node_list, new_state_list, saved_state, turn + 1)
+      else:
+        process_part2(
+          node_list,
+          new_state_list,
+          MapSet.union(saved_state, new_state_list),
+          turn + 1
+        )
   end
 
   def solution1(input) do
@@ -106,11 +99,10 @@ defmodule Aoc2016.Day22 do
 
     node_state = [{empty_node.name, data_node.name}]
 
-    saved_state = SavedState.start_link(node_state)
-
     node_map
     |> get_in([Access.filter(&(&1.used <= empty_node.size)), :name])
-    |> process_part2(node_state, saved_state, 1)
+    |> MapSet.new()
+    |> process_part2(node_state, MapSet.new([node_state]), 1)
   end
 
   @doc """
