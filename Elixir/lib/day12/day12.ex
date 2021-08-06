@@ -2,66 +2,83 @@ defmodule Aoc2016.Day12 do
   @day "12"
   @input_file "../inputs/day#{@day}.txt"
 
+  @register_label ~w(a b c d)
+
   def parse_line(line) do
     [instruction | operande] = String.split(line, " ", trim: true)
 
-    Enum.reduce(operande, {instruction}, fn x, acc ->
-      Tuple.append(
-        acc,
-        case x do
-          <<x>> when x in ?a..?d -> <<x>>
-          _ -> String.to_integer(x)
-        end
+    [
+      instruction
+      | Enum.map(operande, fn
+          x when x in @register_label -> x
+          x -> String.to_integer(x)
+        end)
+    ]
+    |> List.to_tuple()
+  end
+
+  def process(instructions, register),
+    do: exec(instructions[register.pointer], register, instructions)
+
+  def exec(nil, register, _instructions), do: register["a"]
+
+  def exec({"cpy", x, y}, register, instructions) when y in @register_label,
+    do:
+      process(instructions, %{
+        register
+        | y => Map.get(register, x, x),
+          pointer: register.pointer + 1
+      })
+
+  def exec({"inc", x}, register, instructions) when x in @register_label,
+    do:
+      process(
+        instructions,
+        %{
+          register
+          | x => register[x] + 1,
+            pointer: register.pointer + 1
+        }
       )
-    end)
-  end
 
-  def process(instructions, {register, pointer}) when pointer >= length(instructions),
-    do: register["a"]
+  def exec({"dec", x}, register, instructions) when x in @register_label,
+    do:
+      process(
+        instructions,
+        %{
+          register
+          | x => register[x] - 1,
+            pointer: register.pointer + 1
+        }
+      )
 
-  def process(instructions, {register, pointer}) do
-    process(
-      instructions,
-      exec(Enum.at(instructions, pointer), {register, pointer})
-    )
-  end
-
-  def exec({"cpy", x, y}, {register, pointer}),
-    do: {
-      Map.put(register, y, Map.get(register, x, x)),
-      pointer + 1
-    }
-
-  def exec({"inc", x}, {register, pointer}),
-    do: {
-      Map.update!(register, x, &(&1 + 1)),
-      pointer + 1
-    }
-
-  def exec({"dec", x}, {register, pointer}),
-    do: {
-      Map.update!(register, x, &(&1 - 1)),
-      pointer + 1
-    }
-
-  def exec({"jnz", x, y}, {register, pointer}),
-    do: {
-      register,
-      pointer + if(register[x] == 0, do: 1, else: y)
-    }
+  def exec({"jnz", x, y}, register, instructions),
+    do:
+      process(
+        instructions,
+        %{
+          register
+          | pointer:
+              register.pointer +
+                if(Map.get(register, x, x) == 0,
+                  do: 1,
+                  else: Map.get(register, y, y)
+                )
+        }
+      )
 
   def solution1(input) do
     input
     |> String.split("\n", trim: true)
     |> Enum.map(&parse_line/1)
-    |> process({
-      %{
-        "a" => 0,
-        "b" => 0,
-        "c" => 0,
-        "d" => 0
-      },
-      0
+    |> Enum.with_index(&{&2, &1})
+    |> Enum.into(%{})
+    |> process(%{
+      "a" => 0,
+      "b" => 0,
+      "c" => 0,
+      "d" => 0,
+      pointer: 0
     })
   end
 
@@ -69,14 +86,14 @@ defmodule Aoc2016.Day12 do
     input
     |> String.split("\n", trim: true)
     |> Enum.map(&parse_line/1)
-    |> process({
-      %{
-        "a" => 0,
-        "b" => 0,
-        "c" => 1,
-        "d" => 0
-      },
-      0
+    |> Enum.with_index(&{&2, &1})
+    |> Enum.into(%{})
+    |> process(%{
+      "a" => 0,
+      "b" => 0,
+      "c" => 1,
+      "d" => 0,
+      pointer: 0
     })
   end
 
